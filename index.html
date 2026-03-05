@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delta Force: Hawk Ops - 烽火地带</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Menu Screen -->
+    <div id="menuScreen">
+        <div class="menu-title">DELTA FORCE</div>
+        <div class="menu-subtitle">Hawk Ops</div>
+        <div class="menu-section-title">// 选择干员 //</div>
+        <div class="operator-select">
+            <div class="op-card selected" data-class="assault" onclick="Game.selectOperator('assault')">
+                <div id="opSvgAssault"></div>
+                <div class="op-name">突击</div>
+                <div class="op-skill">冲刺 - 加速+无敌</div>
+            </div>
+            <div class="op-card" data-class="engineer" onclick="Game.selectOperator('engineer')">
+                <div id="opSvgEngineer"></div>
+                <div class="op-name">工程</div>
+                <div class="op-skill">地雷 - 区域伤害</div>
+            </div>
+            <div class="op-card" data-class="support" onclick="Game.selectOperator('support')">
+                <div id="opSvgSupport"></div>
+                <div class="op-name">支援</div>
+                <div class="op-skill">烟雾 - 范围回血</div>
+            </div>
+            <div class="op-card" data-class="recon" onclick="Game.selectOperator('recon')">
+                <div id="opSvgRecon"></div>
+                <div class="op-name">侦察</div>
+                <div class="op-skill">扫描 - 显示敌人</div>
+            </div>
+        </div>
+        <button class="btn-deploy" onclick="Game.startGame()">部 署</button>
+        <div class="menu-hint">
+            WASD 移动 | 鼠标瞄准&射击 | R 换弹 | Q 技能 | E 交互 | Tab 背包<br>
+            搜刮物资 → 消灭敌人 → 到达撤离点 → 成功撤离
+        </div>
+    </div>
+
+    <!-- Game HUD (rendered by canvas, this is just a container) -->
+    <div id="gameHUD"></div>
+
+    <!-- Inventory Panel -->
+    <div id="inventoryPanel">
+        <div class="inv-title">// 背包 //</div>
+        <div id="inventoryGrid"></div>
+        <div class="inv-value">总价值: <span id="invValue">$0</span></div>
+    </div>
+
+    <!-- Game Over -->
+    <div id="gameOverScreen">
+        <div class="result-title death">阵亡</div>
+        <div class="result-stats">
+            击杀: <span id="deathKills">0</span><br>
+            存活时间: <span id="deathTime">0:00</span>
+        </div>
+        <button class="btn-retry" onclick="Game.showMenu()">返回大厅</button>
+    </div>
+
+    <!-- Victory -->
+    <div id="victoryScreen">
+        <div class="result-title victory">撤离成功</div>
+        <div class="result-stats">
+            击杀: <span id="vicKills">0</span><br>
+            用时: <span id="vicTime">0:00</span><br>
+            物品: <span id="vicItems">0</span><br>
+            收益: <span id="vicLoot">$0</span>
+        </div>
+        <button class="btn-retry" onclick="Game.showMenu()">返回大厅</button>
+    </div>
+
+    <script src="svg.js"></script>
+    <script src="map.js"></script>
+    <script src="entities.js"></script>
+    <script src="game.js"></script>
+    <script>
+        // Inject operator SVG cards into menu
+        ['assault', 'engineer', 'support', 'recon'].forEach(cls => {
+            const el = document.getElementById('opSvg' + cls.charAt(0).toUpperCase() + cls.slice(1));
+            if (el) el.innerHTML = SVG.getOperatorCardSVG(cls);
+        });
+
+        // Start game engine
+        Game.init();
+    </script>
+</body>
+</html>
