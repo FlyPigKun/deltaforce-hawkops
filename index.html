@@ -36,6 +36,33 @@
                 <div class="op-skill">扫描 - 显示敌人</div>
             </div>
         </div>
+        <div class="menu-section-title">// 选择战区 //</div>
+        <div class="map-select">
+            <div class="map-card selected" data-map="desert" onclick="Game.selectMap('desert')">
+                <div class="map-preview" style="background:#4a4030">
+                    <div class="map-icon">&#9776;</div>
+                </div>
+                <div class="map-name">荒漠前哨</div>
+                <div class="map-desc">沙漠据点 / 建筑分散</div>
+                <div class="map-diff">普通</div>
+            </div>
+            <div class="map-card" data-map="alpine" onclick="Game.selectMap('alpine')">
+                <div class="map-preview" style="background:#5a6070">
+                    <div class="map-icon">&#9968;</div>
+                </div>
+                <div class="map-name">雪山基地</div>
+                <div class="map-desc">冰雪山地 / 建筑密集</div>
+                <div class="map-diff diff-hard">困难</div>
+            </div>
+            <div class="map-card" data-map="harbor" onclick="Game.selectMap('harbor')">
+                <div class="map-preview" style="background:#3a3830">
+                    <div class="map-icon">&#9875;</div>
+                </div>
+                <div class="map-name">港口废墟</div>
+                <div class="map-desc">废弃港口 / 水域障碍</div>
+                <div class="map-diff diff-expert">专家</div>
+            </div>
+        </div>
         <div class="menu-buttons">
             <button class="btn-deploy" onclick="Game.startGame()">部 署</button>
             <button class="btn-stash" id="stashBtn" onclick="Game.toggleStash()">仓库 (0件 / $0)</button>

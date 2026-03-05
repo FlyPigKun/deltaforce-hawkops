@@ -244,8 +244,7 @@ class Player {
     }
 
     getInventoryValue() {
-        const values = { parts: 150, valuable: 500 };
-        return this.inventory.reduce((sum, item) => sum + (values[item.type] || 0), 0);
+        return this.inventory.reduce((sum, item) => sum + (item.getValue ? item.getValue() : 0), 0);
     }
 }
 
@@ -419,12 +418,34 @@ class Enemy {
     }
 }
 
+// ============ RARITY SYSTEM ============
+const RARITY = {
+    common:    { name: '普通', color: '#aaaaaa', glow: 'rgba(170,170,170,', multiplier: 1,   particles: 5,  shake: 0 },
+    uncommon:  { name: '优良', color: '#4caf50', glow: 'rgba(76,175,80,',  multiplier: 1.5, particles: 10, shake: 2 },
+    rare:      { name: '稀有', color: '#2196f3', glow: 'rgba(33,150,243,', multiplier: 2.5, particles: 18, shake: 4 },
+    epic:      { name: '史诗', color: '#9c27b0', glow: 'rgba(156,39,176,', multiplier: 4,   particles: 28, shake: 6 },
+    legendary: { name: '传说', color: '#ff9800', glow: 'rgba(255,152,0,',  multiplier: 8,   particles: 40, shake: 10 }
+};
+
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
+// Weighted random rarity selection
+function rollRarity() {
+    const roll = Math.random() * 100;
+    if (roll < 2)  return 'legendary';
+    if (roll < 10) return 'epic';
+    if (roll < 30) return 'rare';
+    if (roll < 60) return 'uncommon';
+    return 'common';
+}
+
 // ============ LOOT ============
 class Loot {
-    constructor(x, y, type) {
+    constructor(x, y, type, rarity) {
         this.x = x;
         this.y = y;
         this.type = type;
+        this.rarity = rarity || rollRarity();
         this.collected = false;
         this.radius = 14;
     }
@@ -440,9 +461,14 @@ class Loot {
         return names[this.type] || this.type;
     }
 
+    getRarityInfo() {
+        return RARITY[this.rarity] || RARITY.common;
+    }
+
     getValue() {
-        const values = { medkit: 0, ammo: 0, parts: 150, valuable: 500, armor: 0 };
-        return values[this.type] || 0;
+        const baseValues = { medkit: 0, ammo: 0, parts: 150, valuable: 500, armor: 0 };
+        const base = baseValues[this.type] || 0;
+        return Math.round(base * this.getRarityInfo().multiplier);
     }
 }
 

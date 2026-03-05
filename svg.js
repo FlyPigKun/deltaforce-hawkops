@@ -101,10 +101,38 @@ const SVG = {
         ctx.restore();
     },
 
-    // Draw loot items
-    drawLoot(ctx, x, y, type, size = 12) {
+    // Draw loot items with rarity glow
+    drawLoot(ctx, x, y, type, size = 12, rarity = 'common') {
         ctx.save();
         ctx.translate(x, y);
+
+        // Rarity glow ring
+        const rarityInfo = (typeof RARITY !== 'undefined') ? RARITY[rarity] : null;
+        if (rarityInfo && rarity !== 'common') {
+            const pulse = Math.sin(Date.now() / 300) * 0.15 + 0.35;
+            const glowSize = size * 2 + (rarity === 'legendary' ? 8 : rarity === 'epic' ? 5 : 2);
+            ctx.beginPath();
+            ctx.arc(0, 0, glowSize, 0, Math.PI * 2);
+            const grad = ctx.createRadialGradient(0, 0, size * 0.3, 0, 0, glowSize);
+            grad.addColorStop(0, rarityInfo.glow + `${pulse})`);
+            grad.addColorStop(1, rarityInfo.glow + '0)');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Rotating sparkles for epic/legendary
+            if (rarity === 'epic' || rarity === 'legendary') {
+                const sparkCount = rarity === 'legendary' ? 6 : 3;
+                const t = Date.now() / 1000;
+                for (let i = 0; i < sparkCount; i++) {
+                    const a = t * 1.5 + (i / sparkCount) * Math.PI * 2;
+                    const r = size * 1.5;
+                    ctx.fillStyle = rarityInfo.color;
+                    ctx.beginPath();
+                    ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
 
         switch (type) {
             case 'medkit':
@@ -199,14 +227,122 @@ const SVG = {
                 break;
         }
 
-        // Glow effect for loot
+        ctx.restore();
+    },
+
+    // Draw opening progress arc above loot
+    drawOpeningProgress(ctx, x, y, progress, rarityColor) {
+        ctx.save();
+        ctx.translate(x, y);
+
+        const radius = 20;
+        // Background arc
         ctx.beginPath();
-        ctx.arc(0, 0, size * 1.5, 0, Math.PI * 2);
-        const glow = ctx.createRadialGradient(0, 0, size * 0.5, 0, 0, size * 1.5);
-        glow.addColorStop(0, 'rgba(255,255,200,0.15)');
-        glow.addColorStop(1, 'rgba(255,255,200,0)');
-        ctx.fillStyle = glow;
+        ctx.arc(0, -8, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Progress arc
+        const startAngle = -Math.PI / 2;
+        const endAngle = startAngle + progress * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(0, -8, radius, startAngle, endAngle);
+        ctx.strokeStyle = rarityColor || '#ffd700';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Center text
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${Math.floor(progress * 100)}%`, 0, -8);
+
+        ctx.restore();
+    },
+
+    // Draw loot reveal effect (the big unboxing moment)
+    drawLootReveal(ctx, cx, cy, loot, timer, maxTimer) {
+        const progress = 1 - (timer / maxTimer); // 0 -> 1
+        const rarityInfo = loot.getRarityInfo();
+        const color = rarityInfo.color;
+
+        ctx.save();
+
+        // Full screen flash at start
+        if (progress < 0.2) {
+            const flashAlpha = (1 - progress / 0.2) * 0.4;
+            ctx.fillStyle = color.replace(')', '') + `,${flashAlpha})`;
+            if (color.startsWith('#')) {
+                // Convert hex to rgba
+                const r = parseInt(color.slice(1,3), 16);
+                const g = parseInt(color.slice(3,5), 16);
+                const b = parseInt(color.slice(5,7), 16);
+                ctx.fillStyle = `rgba(${r},${g},${b},${flashAlpha})`;
+            }
+            ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        }
+
+        // Central panel
+        const panelW = 280, panelH = 160;
+        const px = cx - panelW / 2, py = cy - panelH / 2;
+
+        // Panel background
+        ctx.fillStyle = 'rgba(10,15,10,0.92)';
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        const cornerR = 10;
+        ctx.beginPath();
+        ctx.roundRect(px, py, panelW, panelH, cornerR);
         ctx.fill();
+        ctx.stroke();
+
+        // Rarity color top stripe
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.roundRect(px, py, panelW, 6, [cornerR, cornerR, 0, 0]);
+        ctx.fill();
+
+        // Item icon (scale in)
+        const iconScale = Math.min(1, progress * 3);
+        const iconSize = 40 * iconScale;
+        ctx.save();
+        ctx.translate(cx, cy - 20);
+        ctx.scale(iconScale, iconScale);
+        // Draw loot at center
+        this.drawLoot(ctx, 0, 0, loot.type, 18, loot.rarity);
+        ctx.restore();
+
+        // Rarity name (fade in after 0.3)
+        if (progress > 0.3 && loot.rarity !== 'common') {
+            const textAlpha = Math.min(1, (progress - 0.3) / 0.3);
+            ctx.fillStyle = color;
+            ctx.globalAlpha = textAlpha;
+            ctx.font = 'bold 18px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(rarityInfo.name, cx, cy + 30);
+            ctx.globalAlpha = 1;
+        }
+
+        // Item name
+        if (progress > 0.4) {
+            const textAlpha = Math.min(1, (progress - 0.4) / 0.3);
+            ctx.globalAlpha = textAlpha;
+            ctx.fillStyle = '#ddd';
+            ctx.font = '14px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText(loot.getDisplayName(), cx, cy + 52);
+
+            // Value
+            const val = loot.getValue();
+            if (val > 0) {
+                ctx.fillStyle = '#ffd700';
+                ctx.fillText(`$${val}`, cx, cy + 70);
+            }
+            ctx.globalAlpha = 1;
+        }
 
         ctx.restore();
     },

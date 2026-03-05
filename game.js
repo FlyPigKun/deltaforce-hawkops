@@ -7,8 +7,21 @@ const Game = {
     height: 0,
 
     // Game state
-    state: 'menu', // menu, playing, inventory, extracting, gameover, victory
+    state: 'menu', // menu, playing, opening, inventory, extracting, gameover, victory
     selectedOperator: 'assault',
+    selectedMap: 'desert',
+
+    // Opening (loot unbox) state
+    openingLoot: null,        // the Loot being opened
+    openingProgress: 0,       // 0→1 progress bar
+    openingDuration: 0.8,     // seconds to open
+    revealTimer: 0,           // countdown for reveal panel
+    revealDuration: 1.8,      // how long reveal shows
+    revealActive: false,
+
+    // Camera shake
+    shakeAmount: 0,
+    shakeDecay: 0.9,
 
     // Entities
     player: null,
@@ -120,7 +133,7 @@ const Game = {
         this.state = 'playing';
 
         // Init map
-        GameMap.init();
+        GameMap.init(this.selectedMap);
 
         // Init player
         this.player = new Player(GameMap.playerSpawn.x, GameMap.playerSpawn.y, this.selectedOperator);
@@ -160,7 +173,7 @@ const Game = {
         const dt = Math.min((time - this.lastTime) / 1000, 0.05);
         this.lastTime = time;
 
-        if (this.state === 'playing' || this.state === 'extracting') {
+        if (this.state === 'playing' || this.state === 'extracting' || this.state === 'opening') {
             this.update(dt);
         }
         this.render();
@@ -182,6 +195,15 @@ const Game = {
 
         // Update player
         this.player.update(dt, this.keys, mouseAngle, GameMap);
+
+        // Dismiss reveal on any key/click
+        if (this.revealActive && (this.mouse.down || Object.values(this.keys).some(v => v))) {
+            // Small delay before allowing dismiss
+            if (this.revealTimer < this.revealDuration - 0.3) {
+                this.revealActive = false;
+                this.openingLoot = null;
+            }
+        }
 
         // Shooting
         if (this.mouse.down && this.state === 'playing') {
@@ -318,9 +340,13 @@ const Game = {
         this.particles.forEach(p => p.update(dt));
         this.particles = this.particles.filter(p => p.life > 0);
 
-        // Camera follow
+        // Camera follow + shake
         this.camera.x = this.player.x - this.width / 2;
         this.camera.y = this.player.y - this.height / 2;
+        if (this.shakeAmount > 0) {
+            this.camera.x += (Math.random() - 0.5) * this.shakeAmount * 2;
+            this.camera.y += (Math.random() - 0.5) * this.shakeAmount * 2;
+        }
         this.camera.x = Math.max(0, Math.min(GameMap.width * TILE_SIZE - this.width, this.camera.x));
         this.camera.y = Math.max(0, Math.min(GameMap.height * TILE_SIZE - this.height, this.camera.y));
 
@@ -366,6 +392,64 @@ const Game = {
             this.weatherIntensity = Math.min(1, this.weatherIntensity + dt * 0.3);
         } else {
             this.weatherIntensity = Math.max(0, this.weatherIntensity - dt * 0.5);
+        }
+
+        // Opening loot progress
+        if (this.state === 'opening' && this.openingLoot) {
+            this.openingProgress += dt / this.openingDuration;
+            // Cancel if player moves
+            const moving = this.keys['w'] || this.keys['s'] || this.keys['a'] || this.keys['d'];
+            if (moving) {
+                this.state = 'playing';
+                this.openingLoot = null;
+                this.openingProgress = 0;
+            }
+            if (this.openingProgress >= 1) {
+                // Complete - trigger reveal
+                this.openingProgress = 1;
+                this.revealActive = true;
+                this.revealTimer = this.revealDuration;
+                // Collect the item
+                if (this.player.addItem(this.openingLoot)) {
+                    this.openingLoot.collected = true;
+                }
+                // Camera shake based on rarity
+                const rarityInfo = this.openingLoot.getRarityInfo();
+                this.shakeAmount = rarityInfo.shake;
+                // Rarity particles
+                const pCount = rarityInfo.particles;
+                const color = rarityInfo.color;
+                for (let i = 0; i < pCount; i++) {
+                    const a = (i / pCount) * Math.PI * 2 + Math.random() * 0.3;
+                    const sp = 80 + Math.random() * 150;
+                    const r = parseInt(color.slice(1,3),16);
+                    const g = parseInt(color.slice(3,5),16);
+                    const b = parseInt(color.slice(5,7),16);
+                    this.particles.push(new Particle(
+                        this.openingLoot.x, this.openingLoot.y,
+                        Math.cos(a) * sp, Math.sin(a) * sp,
+                        0.6 + Math.random() * 0.4,
+                        `rgba(${r},${g},${b},1)`,
+                        2 + Math.random() * 3
+                    ));
+                }
+                this.state = 'playing';
+            }
+        }
+
+        // Reveal timer countdown
+        if (this.revealActive) {
+            this.revealTimer -= dt;
+            if (this.revealTimer <= 0) {
+                this.revealActive = false;
+                this.openingLoot = null;
+            }
+        }
+
+        // Camera shake decay
+        if (this.shakeAmount > 0) {
+            this.shakeAmount *= this.shakeDecay;
+            if (this.shakeAmount < 0.1) this.shakeAmount = 0;
         }
 
         // Player death
@@ -428,8 +512,16 @@ const Game = {
             const sx = loot.x - this.camera.x;
             const sy = loot.y - this.camera.y;
             if (sx < -50 || sx > this.width + 50 || sy < -50 || sy > this.height + 50) return;
-            SVG.drawLoot(ctx, sx, sy, loot.type);
+            SVG.drawLoot(ctx, sx, sy, loot.type, 12, loot.rarity);
         });
+
+        // Draw opening progress bar
+        if (this.state === 'opening' && this.openingLoot && !this.openingLoot.collected) {
+            const osx = this.openingLoot.x - this.camera.x;
+            const osy = this.openingLoot.y - this.camera.y;
+            const rarityColor = this.openingLoot.getRarityInfo().color;
+            SVG.drawOpeningProgress(ctx, osx, osy, this.openingProgress, rarityColor);
+        }
 
         // Draw extraction points
         GameMap.extractionPoints.forEach(ep => {
@@ -499,8 +591,13 @@ const Game = {
             GameMap.extractionPoints
         );
 
+        // Loot reveal panel
+        if (this.revealActive && this.openingLoot) {
+            SVG.drawLootReveal(ctx, this.width / 2, this.height / 2 - 30, this.openingLoot, this.revealTimer, this.revealDuration);
+        }
+
         // Crosshair
-        if (this.state === 'playing' || this.state === 'extracting') {
+        if (this.state === 'playing' || this.state === 'extracting' || this.state === 'opening') {
             SVG.drawCrosshair(ctx, this.mouse.x, this.mouse.y);
         }
     },
@@ -581,30 +678,49 @@ const Game = {
     renderPrompts(ctx) {
         if (!this.player.alive) return;
 
-        // Loot pickup prompt
-        const nearLoot = this.lootItems.find(l =>
-            !l.collected && Math.hypot(l.x - this.player.x, l.y - this.player.y) < 40
-        );
-        if (nearLoot) {
-            ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(this.width / 2 - 80, this.height / 2 + 40, 160, 30);
-            ctx.fillStyle = '#ffd700';
-            ctx.font = '14px monospace';
+        // Loot pickup prompt (only when not already opening)
+        if (this.state !== 'opening') {
+            const nearLoot = this.lootItems.find(l =>
+                !l.collected && Math.hypot(l.x - this.player.x, l.y - this.player.y) < 40
+            );
+            if (nearLoot) {
+                const ri = nearLoot.getRarityInfo();
+                const tw = 180;
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(this.width / 2 - tw / 2, this.height / 2 + 40, tw, 36);
+                // Rarity color left stripe
+                ctx.fillStyle = ri.color;
+                ctx.fillRect(this.width / 2 - tw / 2, this.height / 2 + 40, 4, 36);
+                // Text
+                ctx.fillStyle = ri.color;
+                ctx.font = 'bold 13px monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(`[E] ${nearLoot.getDisplayName()}`, this.width / 2, this.height / 2 + 55);
+                if (nearLoot.rarity !== 'common') {
+                    ctx.fillStyle = ri.color;
+                    ctx.font = '11px monospace';
+                    ctx.fillText(ri.name, this.width / 2, this.height / 2 + 70);
+                }
+            }
+        } else {
+            // Show "hold still" hint while opening
+            ctx.fillStyle = 'rgba(255,255,255,0.5)';
+            ctx.font = '11px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText(`[E] 拾取 ${nearLoot.getDisplayName()}`, this.width / 2, this.height / 2 + 60);
+            ctx.fillText('保持不动...', this.width / 2, this.height / 2 + 50);
         }
 
         // Extraction prompt
         const nearExtract = GameMap.extractionPoints.find(ep =>
             Math.hypot(ep.x - this.player.x, ep.y - this.player.y) < 40
         );
-        if (nearExtract && this.state !== 'extracting') {
+        if (nearExtract && this.state !== 'extracting' && this.state !== 'opening') {
             ctx.fillStyle = 'rgba(0,0,0,0.6)';
-            ctx.fillRect(this.width / 2 - 80, this.height / 2 + 75, 160, 30);
+            ctx.fillRect(this.width / 2 - 80, this.height / 2 + 80, 160, 30);
             ctx.fillStyle = '#00ff66';
             ctx.font = '14px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('[E] 开始撤离', this.width / 2, this.height / 2 + 95);
+            ctx.fillText('[E] 开始撤离', this.width / 2, this.height / 2 + 100);
         }
     },
 
@@ -703,16 +819,30 @@ const Game = {
     },
 
     handleInteract() {
-        if (this.state !== 'playing' || !this.player.alive) return;
+        if ((this.state !== 'playing' && this.state !== 'opening') || !this.player.alive) return;
 
-        // Check loot
+        // If already opening, ignore
+        if (this.state === 'opening') return;
+
+        // Dismiss reveal early
+        if (this.revealActive) {
+            this.revealActive = false;
+            this.openingLoot = null;
+            return;
+        }
+
+        // Check loot - start opening process
         const nearLoot = this.lootItems.find(l =>
             !l.collected && Math.hypot(l.x - this.player.x, l.y - this.player.y) < 40
         );
         if (nearLoot) {
-            if (this.player.addItem(nearLoot)) {
-                nearLoot.collected = true;
+            if (this.player.inventory.length >= this.player.maxInventory && ['parts', 'valuable'].includes(nearLoot.type)) {
+                // Bag full for storable items - still consume medkit/ammo/armor
+                if (!['medkit', 'ammo', 'armor'].includes(nearLoot.type)) return;
             }
+            this.state = 'opening';
+            this.openingLoot = nearLoot;
+            this.openingProgress = 0;
             return;
         }
 
@@ -769,15 +899,15 @@ const Game = {
     updateInventoryUI() {
         const grid = document.getElementById('inventoryGrid');
         grid.innerHTML = '';
-        const names = { parts: '武器零件', valuable: '贵重物品' };
-        const colors = { parts: '#888', valuable: '#ffd700' };
 
         for (let i = 0; i < this.player.maxInventory; i++) {
             const slot = document.createElement('div');
             slot.className = 'inv-slot';
             if (this.player.inventory[i]) {
                 const item = this.player.inventory[i];
-                slot.innerHTML = `<span style="color:${colors[item.type] || '#aaa'}">${names[item.type] || item.type}</span>`;
+                const ri = item.getRarityInfo();
+                slot.innerHTML = `<span style="color:${ri.color};font-size:10px">${item.getDisplayName()}<br><small>${ri.name} $${item.getValue()}</small></span>`;
+                slot.style.borderColor = ri.color;
                 slot.classList.add('inv-filled');
             }
             grid.appendChild(slot);
@@ -814,7 +944,7 @@ const Game = {
 
         // Transfer items to stash
         this.player.inventory.forEach(item => {
-            this.stash.push({ type: item.type, value: item.getValue ? item.getValue() : 0 });
+            this.stash.push({ type: item.type, rarity: item.rarity || 'common', value: item.getValue ? item.getValue() : 0 });
         });
         this.stashMoney += lootValue;
         this.saveStash();
@@ -824,6 +954,12 @@ const Game = {
         this.selectedOperator = cls;
         document.querySelectorAll('.op-card').forEach(c => c.classList.remove('selected'));
         document.querySelector(`.op-card[data-class="${cls}"]`)?.classList.add('selected');
+    },
+
+    selectMap(mapId) {
+        this.selectedMap = mapId;
+        document.querySelectorAll('.map-card').forEach(c => c.classList.remove('selected'));
+        document.querySelector(`.map-card[data-map="${mapId}"]`)?.classList.add('selected');
     },
 
     // ========== STASH SYSTEM ==========
@@ -882,12 +1018,15 @@ const Game = {
         }
 
         this.stash.forEach((item, index) => {
+            const ri = (typeof RARITY !== 'undefined' && item.rarity) ? RARITY[item.rarity] : { name: '普通', color: '#aaa' };
             const slot = document.createElement('div');
             slot.className = 'stash-item';
+            slot.style.borderLeftColor = ri.color;
             slot.innerHTML = `
                 <div class="stash-item-icon">${SVG.getLootSVG(item.type, 40)}</div>
                 <div class="stash-item-info">
                     <div class="stash-item-name">${typeNames[item.type] || item.type}</div>
+                    <div class="stash-item-rarity" style="color:${ri.color}">${ri.name}</div>
                     <div class="stash-item-value">${item.value > 0 ? '$' + item.value : '消耗品'}</div>
                 </div>
                 <button class="stash-sell-btn" onclick="Game.sellStashItem(${index})" ${item.value <= 0 ? 'disabled' : ''}>
