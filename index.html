@@ -36,10 +36,32 @@
                 <div class="op-skill">扫描 - 显示敌人</div>
             </div>
         </div>
-        <button class="btn-deploy" onclick="Game.startGame()">部 署</button>
+        <div class="menu-buttons">
+            <button class="btn-deploy" onclick="Game.startGame()">部 署</button>
+            <button class="btn-stash" id="stashBtn" onclick="Game.toggleStash()">仓库 (0件 / $0)</button>
+        </div>
         <div class="menu-hint">
             WASD 移动 | 鼠标瞄准&射击 | R 换弹 | Q 技能 | E 交互 | Tab 背包<br>
             搜刮物资 → 消灭敌人 → 到达撤离点 → 成功撤离
+        </div>
+    </div>
+
+    <!-- Stash Panel -->
+    <div id="stashPanel">
+        <div class="stash-container">
+            <div class="stash-header">
+                <div class="stash-title">// 仓库 //</div>
+                <button class="stash-close" onclick="Game.toggleStash()">&times;</button>
+            </div>
+            <div class="stash-summary">
+                物品: <span id="stashCount">0</span> 件 &nbsp;|&nbsp; 总资产: <span id="stashMoney">$0</span>
+            </div>
+            <div id="stashGrid" class="stash-grid">
+                <div class="stash-empty">仓库空空如也...<br>完成撤离后物资将存放在此</div>
+            </div>
+            <div class="stash-footer">
+                <button class="stash-clear-btn" onclick="Game.clearStash()">清空仓库</button>
+            </div>
         </div>
     </div>
 

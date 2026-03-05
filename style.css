@@ -269,3 +269,215 @@ body {
     background: #3a4a3a;
     box-shadow: 0 0 15px rgba(196,169,96,0.3);
 }
+
+/* ========== MENU BUTTONS ========== */
+.menu-buttons {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.btn-stash {
+    padding: 14px 30px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    background: linear-gradient(180deg, #2a3a3a, #1a2a2a);
+    color: #7dc8ff;
+    border: 2px solid #3d6b8b;
+    border-radius: 4px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+}
+
+.btn-stash:hover {
+    background: linear-gradient(180deg, #3a4a4a, #2a3a3a);
+    box-shadow: 0 0 15px rgba(100,180,255,0.3);
+    border-color: #7dc8ff;
+}
+
+/* ========== STASH PANEL ========== */
+#stashPanel {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    background: rgba(5,10,15,0.9);
+}
+
+.stash-container {
+    width: 520px;
+    max-height: 80vh;
+    background: #111a11;
+    border: 2px solid #3d5c3d;
+    border-radius: 10px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+}
+
+.stash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.stash-title {
+    font-size: 20px;
+    color: #c4a960;
+    letter-spacing: 4px;
+    font-weight: bold;
+}
+
+.stash-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.stash-close:hover {
+    color: #ff6666;
+}
+
+.stash-summary {
+    font-size: 13px;
+    color: #aaa;
+    text-align: center;
+    padding: 8px;
+    background: rgba(30,40,30,0.8);
+    border-radius: 4px;
+    margin-bottom: 16px;
+}
+
+.stash-summary span {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+.stash-grid {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 50vh;
+    padding-right: 4px;
+}
+
+.stash-grid::-webkit-scrollbar {
+    width: 6px;
+}
+
+.stash-grid::-webkit-scrollbar-track {
+    background: #1a2a1a;
+}
+
+.stash-grid::-webkit-scrollbar-thumb {
+    background: #3d5c3d;
+    border-radius: 3px;
+}
+
+.stash-empty {
+    text-align: center;
+    color: #555;
+    padding: 40px 0;
+    font-size: 13px;
+    line-height: 2;
+}
+
+.stash-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: rgba(30,40,30,0.6);
+    border: 1px solid #2a3a2a;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+
+.stash-item:hover {
+    background: rgba(40,55,40,0.8);
+    border-color: #3d5c3d;
+}
+
+.stash-item-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.stash-item-icon svg {
+    width: 40px;
+    height: 40px;
+}
+
+.stash-item-info {
+    flex: 1;
+}
+
+.stash-item-name {
+    font-size: 13px;
+    color: #ddd;
+    font-weight: bold;
+}
+
+.stash-item-value {
+    font-size: 11px;
+    color: #ffd700;
+    margin-top: 2px;
+}
+
+.stash-sell-btn {
+    padding: 4px 12px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    background: rgba(196,169,96,0.15);
+    color: #c4a960;
+    border: 1px solid #c4a960;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.stash-sell-btn:hover:not(:disabled) {
+    background: rgba(196,169,96,0.3);
+}
+
+.stash-sell-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+    border-color: #555;
+    color: #555;
+}
+
+.stash-footer {
+    margin-top: 16px;
+    text-align: center;
+}
+
+.stash-clear-btn {
+    padding: 6px 20px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    background: rgba(180,50,50,0.15);
+    color: #cc5555;
+    border: 1px solid #883333;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.stash-clear-btn:hover {
+    background: rgba(180,50,50,0.3);
+    border-color: #cc5555;
+}

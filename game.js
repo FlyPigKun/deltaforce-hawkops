@@ -48,6 +48,10 @@ const Game = {
     // Kill count
     kills: 0,
 
+    // Stash (persistent storage)
+    stash: [],
+    stashMoney: 0,
+
     init() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
@@ -80,6 +84,9 @@ const Game = {
         // Hide cursor in game
         this.canvas.style.cursor = 'none';
 
+        // Load stash from localStorage
+        this.loadStash();
+
         this.showMenu();
         this.lastTime = performance.now();
         requestAnimationFrame(t => this.loop(t));
@@ -101,7 +108,9 @@ const Game = {
         document.getElementById('inventoryPanel').style.display = 'none';
         document.getElementById('gameOverScreen').style.display = 'none';
         document.getElementById('victoryScreen').style.display = 'none';
+        document.getElementById('stashPanel').style.display = 'none';
         this.canvas.style.cursor = 'default';
+        this.updateStashButton();
     },
 
     startGame() {
@@ -798,14 +807,114 @@ const Game = {
         document.getElementById('vicKills').textContent = this.kills;
         document.getElementById('vicTime').textContent =
             `${Math.floor(this.gameTime / 60)}:${Math.floor(this.gameTime % 60).toString().padStart(2, '0')}`;
-        document.getElementById('vicLoot').textContent = `$${this.player.getInventoryValue()}`;
+        const lootValue = this.player.getInventoryValue();
+        document.getElementById('vicLoot').textContent = `$${lootValue}`;
         document.getElementById('vicItems').textContent = this.player.inventory.length;
         this.canvas.style.cursor = 'default';
+
+        // Transfer items to stash
+        this.player.inventory.forEach(item => {
+            this.stash.push({ type: item.type, value: item.getValue ? item.getValue() : 0 });
+        });
+        this.stashMoney += lootValue;
+        this.saveStash();
     },
 
     selectOperator(cls) {
         this.selectedOperator = cls;
         document.querySelectorAll('.op-card').forEach(c => c.classList.remove('selected'));
         document.querySelector(`.op-card[data-class="${cls}"]`)?.classList.add('selected');
+    },
+
+    // ========== STASH SYSTEM ==========
+    loadStash() {
+        try {
+            const data = localStorage.getItem('df_stash');
+            if (data) {
+                const parsed = JSON.parse(data);
+                this.stash = parsed.items || [];
+                this.stashMoney = parsed.money || 0;
+            }
+        } catch (e) {
+            this.stash = [];
+            this.stashMoney = 0;
+        }
+    },
+
+    saveStash() {
+        localStorage.setItem('df_stash', JSON.stringify({
+            items: this.stash,
+            money: this.stashMoney
+        }));
+    },
+
+    updateStashButton() {
+        const btn = document.getElementById('stashBtn');
+        if (btn) {
+            btn.textContent = `仓库 (${this.stash.length}件 / $${this.stashMoney})`;
+        }
+    },
+
+    toggleStash() {
+        const panel = document.getElementById('stashPanel');
+        if (panel.style.display === 'flex') {
+            panel.style.display = 'none';
+        } else {
+            panel.style.display = 'flex';
+            this.renderStashUI();
+        }
+    },
+
+    renderStashUI() {
+        const grid = document.getElementById('stashGrid');
+        const moneyEl = document.getElementById('stashMoney');
+        const countEl = document.getElementById('stashCount');
+        grid.innerHTML = '';
+
+        moneyEl.textContent = `$${this.stashMoney}`;
+        countEl.textContent = `${this.stash.length}`;
+
+        const typeNames = { parts: '武器零件', valuable: '贵重物品', medkit: '医疗包', ammo: '弹药箱', armor: '护甲板' };
+
+        if (this.stash.length === 0) {
+            grid.innerHTML = '<div class="stash-empty">仓库空空如也...<br>完成撤离后物资将存放在此</div>';
+            return;
+        }
+
+        this.stash.forEach((item, index) => {
+            const slot = document.createElement('div');
+            slot.className = 'stash-item';
+            slot.innerHTML = `
+                <div class="stash-item-icon">${SVG.getLootSVG(item.type, 40)}</div>
+                <div class="stash-item-info">
+                    <div class="stash-item-name">${typeNames[item.type] || item.type}</div>
+                    <div class="stash-item-value">${item.value > 0 ? '$' + item.value : '消耗品'}</div>
+                </div>
+                <button class="stash-sell-btn" onclick="Game.sellStashItem(${index})" ${item.value <= 0 ? 'disabled' : ''}>
+                    ${item.value > 0 ? '出售' : '-'}
+                </button>
+            `;
+            grid.appendChild(slot);
+        });
+    },
+
+    sellStashItem(index) {
+        if (index < 0 || index >= this.stash.length) return;
+        const item = this.stash[index];
+        if (item.value <= 0) return;
+        this.stashMoney += item.value;
+        this.stash.splice(index, 1);
+        this.saveStash();
+        this.renderStashUI();
+        this.updateStashButton();
+    },
+
+    clearStash() {
+        if (this.stash.length === 0 && this.stashMoney === 0) return;
+        this.stash = [];
+        this.stashMoney = 0;
+        this.saveStash();
+        this.renderStashUI();
+        this.updateStashButton();
     }
 };

@@ -369,6 +369,51 @@ const SVG = {
         ctx.restore();
     },
 
+    // Generate loot item SVG for UI display
+    getLootSVG(type, size = 40) {
+        const s = size;
+        const h = s; // half for centering
+        switch (type) {
+            case 'medkit':
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="${s-8}" height="${s-8}" rx="3" fill="#fff" stroke="#cc0000" stroke-width="2"/>
+                    <rect x="${s/2-2}" y="8" width="4" height="${s-16}" fill="#cc0000"/>
+                    <rect x="8" y="${s/2-2}" width="${s-16}" height="4" fill="#cc0000"/>
+                </svg>`;
+            case 'ammo':
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="8" width="${s-8}" height="${s-16}" rx="2" fill="#c4a960" stroke="#8b7635" stroke-width="2"/>
+                    <text x="${s/2}" y="${s/2+1}" text-anchor="middle" dominant-baseline="middle" fill="#5a4a20" font-size="14" font-weight="bold" font-family="monospace">弹</text>
+                </svg>`;
+            case 'parts':
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="${s/2}" cy="${s/2}" r="${s/2-6}" fill="#888" stroke="#555" stroke-width="2"/>
+                    <circle cx="${s/2}" cy="${s/2}" r="${s/4-2}" fill="#555"/>
+                    ${[0,1,2,3,4,5].map(i => {
+                        const a = (i/6)*Math.PI*2;
+                        const cx = s/2 + Math.cos(a)*(s/2-8);
+                        const cy = s/2 + Math.sin(a)*(s/2-8);
+                        return `<rect x="${cx-2.5}" y="${cy-2.5}" width="5" height="5" fill="#999" rx="1"/>`;
+                    }).join('')}
+                </svg>`;
+            case 'valuable':
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="${s/2},4 ${s-6},${s/2} ${s/2},${s-4} 6,${s/2}" fill="#ffd700" stroke="#cc9900" stroke-width="2"/>
+                    <line x1="${s/2-4}" y1="${s/2-5}" x2="${s/2+2}" y2="${s/2-8}" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+                    <line x1="${s/2+2}" y1="${s/2-8}" x2="${s/2+6}" y2="${s/2-2}" stroke="rgba(255,255,255,0.6)" stroke-width="1.5"/>
+                </svg>`;
+            case 'armor':
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <path d="${`M${s/2} 4 L${s-6} ${s*0.3} L${s-6} ${s*0.6} L${s/2} ${s-4} L6 ${s*0.6} L6 ${s*0.3} Z`}" fill="#4477aa" stroke="#2255aa" stroke-width="2"/>
+                </svg>`;
+            default:
+                return `<svg viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="4" width="${s-8}" height="${s-8}" fill="#555" stroke="#333" stroke-width="1" rx="3"/>
+                    <text x="${s/2}" y="${s/2+1}" text-anchor="middle" dominant-baseline="middle" fill="#aaa" font-size="12" font-family="monospace">?</text>
+                </svg>`;
+        }
+    },
+
     // Generate operator select card SVG (for menu)
     getOperatorCardSVG(operatorClass) {
         const colors = this.operatorColors[operatorClass];
